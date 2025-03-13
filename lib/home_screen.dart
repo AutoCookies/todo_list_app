@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:audioplayers/audioplayers.dart';
 import 'dart:io';
 import '../Models/Task.dart';
 import '../db/db.dart';
@@ -9,6 +8,8 @@ import './screens/tasks_screen.dart';
 import './screens/calendar_screen.dart';
 import './screens/personal_screen.dart';
 import './Service/AudioService.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -36,6 +37,24 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
     _loadImageOnStartup();
+  }
+
+  Future<void> _logout(BuildContext context) async {
+    try {
+      // Đăng xuất khỏi Firebase
+      await FirebaseAuth.instance.signOut();
+
+      // Đăng xuất khỏi Google (nếu đang sử dụng Google Sign-In)
+      await GoogleSignIn().signOut();
+
+      // Điều hướng về màn hình đăng nhập
+      Navigator.pushReplacementNamed(context, '/login');
+    } catch (e) {
+      print("Logout error: $e");
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text("Đăng xuất thất bại!")));
+    }
   }
 
   Future<void> checkDeadlineTask(BuildContext context) async {
@@ -75,7 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
       // 🔊 Lấy âm lượng từ AudioService trước khi phát âm thanh
       double volume = await AudioService.getVolume();
       await AudioService.playNotification(
-        'sounds/announcement-sound-effect-254037.mp3'
+        'sounds/announcement-sound-effect-254037.mp3',
       );
 
       // 🏆 Hiển thị Dialog sau khi UI đã dựng xong
@@ -104,8 +123,7 @@ class _HomeScreenState extends State<HomeScreen> {
         }
       });
     }
-}
-
+  }
 
   Future<void> cleanOldCompletedTasks() async {
     final db = await databaseService.database;
@@ -178,6 +196,7 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }
   }
+
 
   @override
   Widget build(BuildContext context) {
@@ -289,16 +308,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const Divider(),
 
-            // Logout
             ListTile(
               leading: const Icon(Icons.exit_to_app, color: Colors.red),
-              title: const Text(
-                'Logout',
-                style: TextStyle(color: Colors.red),
-              ),
-              onTap: () {
-                Navigator.pop(context);
-                // Xử lý đăng xuất
+              title: const Text('Logout', style: TextStyle(color: Colors.red)),
+              onTap: () async {
+                await _logout(context);
               },
             ),
           ],
