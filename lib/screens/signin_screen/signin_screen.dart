@@ -1,26 +1,36 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import './Service/authService.dart';
+import '../../Service/authService.dart';
+import '../register_screen/register_screen.dart';
 
-class RegisterScreen extends StatefulWidget {
+class LoginScreen extends StatefulWidget {
   @override
-  _RegisterScreenState createState() => _RegisterScreenState();
+  _LoginScreenState createState() => _LoginScreenState();
 }
 
-class _RegisterScreenState extends State<RegisterScreen> {
+class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController emailController = TextEditingController();
   final TextEditingController passwordController = TextEditingController();
 
-  Future<void> _signUp() async {
+  Future<void> _signInWithEmail() async {
     String email = emailController.text;
     String password = passwordController.text;
 
     try {
-      await AuthService().signUpWithEmail(email, password);
-      Navigator.pop(context);
+      await AuthService().signInWithEmail(email, password);
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Lỗi: ${e.toString()}")),
+      );
+    }
+  }
+
+  Future<void> _signInWithGoogle() async {
+    try {
+      await AuthService().signInWithGoogle();
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Lỗi Google Sign-In: ${e.toString()}")),
       );
     }
   }
@@ -44,8 +54,19 @@ class _RegisterScreenState extends State<RegisterScreen> {
             ),
             SizedBox(height: 20),
             ElevatedButton(
-              onPressed: _signUp,
-              child: Text("Đăng ký"),
+              onPressed: _signInWithEmail,
+              child: Text("Đăng nhập"),
+            ),
+            ElevatedButton(
+              onPressed: _signInWithGoogle,
+              child: Text("Đăng nhập với Google"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => RegisterScreen()),
+              ),
+              child: Text("Chưa có tài khoản? Đăng ký ngay!"),
             ),
           ],
         ),

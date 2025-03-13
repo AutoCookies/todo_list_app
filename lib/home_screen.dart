@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'dart:io';
 import '../Models/Task.dart';
 import '../db/db.dart';
-import './screens/settings_screen.dart';
+import 'screens/settings_screen/settings_screen.dart';
 import '../utils/image_picker_utils.dart';
-import './screens/tasks_screen.dart';
-import './screens/calendar_screen.dart';
-import './screens/personal_screen.dart';
+import 'screens/tasks_screen/tasks_screen.dart';
+import 'screens/calendar_screen/calendar_screen.dart';
+import 'screens/personal_screen/personal_screen.dart';
 import './Service/AudioService.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -44,16 +44,28 @@ class _HomeScreenState extends State<HomeScreen> {
       // Đăng xuất khỏi Firebase
       await FirebaseAuth.instance.signOut();
 
-      // Đăng xuất khỏi Google (nếu đang sử dụng Google Sign-In)
+      // Đăng xuất khỏi Google Sign-In
       await GoogleSignIn().signOut();
 
-      // Điều hướng về màn hình đăng nhập
-      Navigator.pushReplacementNamed(context, '/login');
+      // Đóng Drawer trước khi chuyển màn hình
+      if (Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+
+      // Đợi một chút trước khi điều hướng để tránh lỗi
+      Future.delayed(Duration(milliseconds: 300), () {
+        if (context.mounted) {
+          Navigator.pushReplacementNamed(context, '/login');
+        }
+      });
     } catch (e) {
       print("Logout error: $e");
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text("Đăng xuất thất bại!")));
+
+      if (context.mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text("Đăng xuất thất bại!")));
+      }
     }
   }
 
@@ -196,7 +208,6 @@ class _HomeScreenState extends State<HomeScreen> {
       });
     }
   }
-
 
   @override
   Widget build(BuildContext context) {

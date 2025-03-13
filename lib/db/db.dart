@@ -1,6 +1,9 @@
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
+import 'package:uuid/uuid.dart';
 import '../Models/Task.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class DatabaseService {
   static final DatabaseService _instance = DatabaseService._constructor();
@@ -13,13 +16,6 @@ class DatabaseService {
   DatabaseService._constructor();
 
   final String _tasksTableName = "tasks";
-  final String _tasksIdColumnName = "id";
-  final String _tasksDescriptionColumnName = "description";
-  final String _taskStartDateColumnName = "startDate";
-  final String _tasksEndDateColumnName = "endDate";
-  final String _tasksIsCompletedColumnName = "isCompleted";
-  final String _tasksIsFavoriteColumnName = "isFavorite";
-  final String _tasksType = "type";
 
   Future<Database> get database async {
     if (_db != null) return _db!;
@@ -36,22 +32,23 @@ class DatabaseService {
       version: 1,
       onCreate: (db, version) async {
         await db.execute('''
-        CREATE TABLE $_tasksTableName (
-          $_tasksIdColumnName INTEGER PRIMARY KEY AUTOINCREMENT,  
-          $_tasksDescriptionColumnName TEXT,
-          $_taskStartDateColumnName TEXT,
-          $_tasksEndDateColumnName TEXT,
-          $_tasksIsCompletedColumnName INTEGER,
-          $_tasksIsFavoriteColumnName INTEGER,
-          $_tasksType STRING
-        );
-      ''');
+  CREATE TABLE tasks (
+    id TEXT PRIMARY KEY,
+    userId TEXT,  -- Thêm userId để lưu đúng dữ liệu cho từng người dùng
+    description TEXT,
+    startDate TEXT,
+    endDate TEXT,
+    isCompleted INTEGER,
+    isFavorite INTEGER,
+    type TEXT
+  );
+''');
 
         await db.execute('''
-        CREATE TABLE completed_tasks (
-          date TEXT PRIMARY KEY,
-          count INTEGER DEFAULT 0
-        );
+      CREATE TABLE completed_tasks (
+        date TEXT PRIMARY KEY,
+        count INTEGER DEFAULT 0
+      );
       ''');
       },
     );
@@ -122,26 +119,44 @@ class DatabaseService {
 
   Future<void> addTask(Task task) async {
     final db = await database;
+    String? uid = FirebaseAuth.instance.currentUser?.uid;
+
+    if (uid == null) return;
+
+    String taskId = task.id.isEmpty ? const Uuid().v4() : task.id;
+
     await db.insert(_tasksTableName, {
+      'id': taskId,
+      'userId': uid, // Gán userId
       'description': task.description,
       'startDate': task.startDate.toIso8601String(),
       'endDate': task.endDate.toIso8601String(),
       'isCompleted': task.isCompleted ? 1 : 0,
       'isFavorite': task.isFavorite ? 1 : 0,
-      'type': task.type, // Thêm type vào DB
+      'type': task.type,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
+
+    await saveTaskToFirebase(task.copyWith(id: taskId));
   }
 
   Future<List<Task>> getTasks() async {
     final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query(_tasksTableName);
+    String? uid = FirebaseAuth.instance.currentUser?.uid;
+
+    if (uid == null) return []; // Nếu chưa đăng nhập, trả về danh sách rỗng
+
+    final List<Map<String, dynamic>> maps = await db.query(
+      _tasksTableName,
+      where: 'userId = ?', // Lọc theo userId
+      whereArgs: [uid],
+    );
 
     return List.generate(maps.length, (i) {
       return Task.fromMap(maps[i]);
     });
   }
 
-  Future<void> deleteTask(int id) async {
+  Future<void> deleteTask(String id) async {
     final db = await database;
     int result = await db.delete(
       _tasksTableName,
@@ -149,8 +164,17 @@ class DatabaseService {
       whereArgs: [id],
     );
 
-    // Debugging
     print("Deleted $result row(s) from database with ID: $id");
+
+    String? uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) {
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .collection('tasks')
+          .doc(id) // Dùng ID dạng String
+          .delete();
+    }
   }
 
   Future<void> updateTask(Task task) async {
@@ -170,5 +194,17 @@ class DatabaseService {
   Future<void> clearCompletedTasks() async {
     final db = await database;
     await db.delete('completed_tasks'); // Xóa toàn bộ bảng completed_tasks
+  }
+
+  Future<void> saveTaskToFirebase(Task task) async {
+    String? uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .collection('tasks')
+        .doc(task.id.toString()) // Dùng ID từ SQLite để đồng bộ
+        .set(task.toMap());
   }
 }

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../Service/AudioService.dart';
+import '../../Service/AudioService.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});

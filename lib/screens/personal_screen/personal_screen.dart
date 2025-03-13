@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
-import '../db/db.dart';
-import '../Models/Task.dart';
+import '../../db/db.dart';
+import '../../Models/Task.dart';
 
 class PersonalScreen extends StatefulWidget {
   const PersonalScreen({Key? key}) : super(key: key);

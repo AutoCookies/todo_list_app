@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import '../Models/Task.dart';
-import './add_tasks_screen.dart';
+import '../../Models/Task.dart';
+import '../add_tasks_screen/add_tasks_screen.dart';
 
 class TasksScreen extends StatefulWidget {
   final List<Task> tasks;

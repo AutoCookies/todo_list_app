@@ -1,6 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import '../signin_screen.dart';
+import '../screens/signin_screen/signin_screen.dart';
 import '../home_screen.dart';
 
 class AuthStateListener extends StatelessWidget {
