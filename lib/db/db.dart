@@ -31,24 +31,28 @@ class DatabaseService {
       databasePath,
       version: 1,
       onCreate: (db, version) async {
+        // Tạo bảng tasks
         await db.execute('''
-  CREATE TABLE tasks (
-    id TEXT PRIMARY KEY,
-    userId TEXT,  -- Thêm userId để lưu đúng dữ liệu cho từng người dùng
-    description TEXT,
-    startDate TEXT,
-    endDate TEXT,
-    isCompleted INTEGER,
-    isFavorite INTEGER,
-    type TEXT
-  );
-''');
+        CREATE TABLE tasks (
+          id TEXT PRIMARY KEY,
+          userId TEXT,
+          description TEXT,
+          startDate TEXT,
+          endDate TEXT,
+          isCompleted INTEGER,
+          isFavorite INTEGER,
+          type TEXT
+        );
+      ''');
 
+        // Tạo bảng completed_tasks có userId
         await db.execute('''
-      CREATE TABLE completed_tasks (
-        date TEXT PRIMARY KEY,
-        count INTEGER DEFAULT 0
-      );
+        CREATE TABLE completed_tasks (
+          date TEXT,
+          userId TEXT,
+          count INTEGER DEFAULT 0,
+          PRIMARY KEY (date, userId)
+        );
       ''');
       },
     );
@@ -105,8 +109,15 @@ class DatabaseService {
   }
 
   Future<Map<DateTime, int>> getCompletedTasksByDate() async {
+    String? uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return {};
+
     final db = await database;
-    final List<Map<String, dynamic>> maps = await db.query("completed_tasks");
+    final List<Map<String, dynamic>> maps = await db.query(
+      "completed_tasks",
+      where: 'userId = ?', // Lọc theo userId
+      whereArgs: [uid],
+    );
 
     Map<DateTime, int> completedTasksByDate = {};
     for (var map in maps) {
@@ -127,7 +138,7 @@ class DatabaseService {
 
     await db.insert(_tasksTableName, {
       'id': taskId,
-      'userId': uid, // Gán userId
+      'userId': uid, // Lưu userId
       'description': task.description,
       'startDate': task.startDate.toIso8601String(),
       'endDate': task.endDate.toIso8601String(),
@@ -136,7 +147,9 @@ class DatabaseService {
       'type': task.type,
     }, conflictAlgorithm: ConflictAlgorithm.replace);
 
-    await saveTaskToFirebase(task.copyWith(id: taskId));
+    await saveTaskToFirebase(
+      task.copyWith(id: taskId, userId: uid),
+    ); // Lưu userId vào Firebase
   }
 
   Future<List<Task>> getTasks() async {

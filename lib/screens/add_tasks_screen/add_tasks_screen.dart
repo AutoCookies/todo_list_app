@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../Models/Task.dart'; // Import your Task model
 import '../../db/db.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class AddTaskScreen extends StatefulWidget {
   final Function(Task) onTaskAdded;
@@ -31,12 +32,18 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
 
   void _submitForm() async {
     if (_formKey.currentState!.validate()) {
+      String? uid = FirebaseAuth.instance.currentUser?.uid; // Lấy userId
+      if (uid == null) return; // Nếu chưa đăng nhập, không thêm task
+
       // Create a new task
       Task newTask = Task(
         description: _descriptionController.text,
         startDate: _startDate,
         endDate: _endDate,
-        type: _selectedType, // Thêm type vào Task
+        isCompleted: false,
+        isFavorite: false,
+        type: _selectedType,
+        userId: uid, // Thêm userId
       );
 
       // Add task vào Cơ sở dữ liệu

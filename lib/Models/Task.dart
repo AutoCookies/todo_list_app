@@ -2,6 +2,7 @@ import 'package:uuid/uuid.dart';
 
 class Task {
   final String id; // Đổi int -> String
+  String userId;
   final String description;
   final DateTime startDate;
   final DateTime endDate;
@@ -11,6 +12,7 @@ class Task {
 
   Task({
     String? id, // Cho phép null, tự tạo nếu không có
+    required this.userId,
     required this.description,
     required this.startDate,
     required this.endDate,
@@ -20,7 +22,8 @@ class Task {
   }) : id = id ?? const Uuid().v4(); // Tạo ID mới nếu không có
 
   Task copyWith({
-    String? id, // 🛠 Thêm id vào copyWith
+    String? id,
+    String? userId, // ✅ Thêm userId vào copyWith
     String? description,
     DateTime? startDate,
     DateTime? endDate,
@@ -29,7 +32,8 @@ class Task {
     String? type,
   }) {
     return Task(
-      id: id ?? this.id, // Giữ nguyên id nếu không truyền vào
+      id: id ?? this.id,
+      userId: userId ?? this.userId, // ✅ Gán userId mới nếu có
       description: description ?? this.description,
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
@@ -44,6 +48,7 @@ class Task {
       id:
           map['id']?.toString() ??
           const Uuid().v4(), // 🔥 Chuyển `int` -> `String`
+      userId: map['userId'] ?? '',
       description: map['description'] ?? '',
       startDate: DateTime.parse(map['startDate']),
       endDate: DateTime.parse(map['endDate']),
@@ -55,7 +60,8 @@ class Task {
 
   Map<String, dynamic> toMap() {
     return {
-      'id': id, // 🔥 Giữ ID là `String` thay vì `int`
+      'id': id,
+      'userId': userId, // ✅ Thêm userId
       'description': description,
       'startDate': startDate.toIso8601String(),
       'endDate': endDate.toIso8601String(),

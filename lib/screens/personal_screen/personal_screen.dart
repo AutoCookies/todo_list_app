@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../db/db.dart';
 import '../../Models/Task.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class PersonalScreen extends StatefulWidget {
   const PersonalScreen({Key? key}) : super(key: key);
@@ -26,6 +27,10 @@ class _PersonalScreenState extends State<PersonalScreen> {
   }
 
   Future<void> _loadTaskStats() async {
+    String? uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+
+    // Lấy dữ liệu từ SQLite
     List<Task> allTasks = await database.getTasks();
     Map<DateTime, int> taskCountMap = await database.getCompletedTasksByDate();
 
@@ -36,12 +41,16 @@ class _PersonalScreenState extends State<PersonalScreen> {
 
     int completed = 0;
     int pending = 0;
-    int completedTodayCount =
-        taskCountMap[today] ?? 0; // Lấy số task hoàn thành hôm nay
+    int completedTodayCount = taskCountMap[today] ?? 0;
 
     for (var task in allTasks) {
-      if (task.endDate.isAfter(firstDayOfMonth) &&
-          task.endDate.isBefore(lastDayOfMonth)) {
+      // Kiểm tra xem task có nằm trong tháng hiện tại và thuộc về user hiện tại hay không
+      if ((task.startDate.isBefore(lastDayOfMonth) ||
+              task.startDate.isAtSameMomentAs(lastDayOfMonth)) &&
+          (task.endDate.isAfter(firstDayOfMonth) ||
+              task.endDate.isAtSameMomentAs(firstDayOfMonth)) &&
+          task.userId == uid) {
+        // Lọc theo userId
         if (task.isCompleted) {
           completed++;
         } else {
