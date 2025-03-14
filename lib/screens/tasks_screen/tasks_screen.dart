@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../Models/Task.dart';
 import '../add_tasks_screen/add_tasks_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class TasksScreen extends StatefulWidget {
   final List<Task> tasks;
@@ -170,14 +171,38 @@ class _TasksScreenState extends State<TasksScreen> {
                 ),
                 Checkbox(
                   value: task.isCompleted,
-                  onChanged: (value) {
+                  onChanged: (value) async {
                     bool newValue = value ?? false;
                     widget.onTaskUpdated(task.copyWith(isCompleted: newValue));
 
+                    final prefs = await SharedPreferences.getInstance();
                     if (newValue) {
-                      databaseService.updateDate(DateTime.now());
+                      // Lưu ngày hoàn thành vào SharedPreferences
+                      await prefs.setString(
+                        'completed_date_${task.id}',
+                        DateTime.now().toIso8601String(),
+                      );
+
+                      // Tăng số lượng task hoàn thành hôm nay
+                      int completedToday =
+                          prefs.getInt('completed_today_count') ?? 0;
+                      await prefs.setInt(
+                        'completed_today_count',
+                        completedToday + 1,
+                      );
                     } else {
-                      databaseService.decreaseDate(DateTime.now());
+                      // Xóa ngày hoàn thành khỏi SharedPreferences nếu task được bỏ chọn
+                      await prefs.remove('completed_date_${task.id}');
+
+                      // Giảm số lượng task hoàn thành hôm nay
+                      int completedToday =
+                          prefs.getInt('completed_today_count') ?? 0;
+                      if (completedToday > 0) {
+                        await prefs.setInt(
+                          'completed_today_count',
+                          completedToday - 1,
+                        );
+                      }
                     }
                   },
                 ),

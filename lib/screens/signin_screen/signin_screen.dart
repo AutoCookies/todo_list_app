@@ -17,6 +17,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       await AuthService().signInWithEmail(email, password);
+      
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Lỗi: ${e.toString()}")),

@@ -3,6 +3,7 @@ import 'package:fl_chart/fl_chart.dart';
 import '../../db/db.dart';
 import '../../Models/Task.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class PersonalScreen extends StatefulWidget {
   const PersonalScreen({Key? key}) : super(key: key);
@@ -19,6 +20,7 @@ class _PersonalScreenState extends State<PersonalScreen> {
 
   Map<DateTime, int> completedTasksByDate = {};
   DateTime startDate = DateTime.now().subtract(const Duration(days: 15));
+  List<Task> allTasks = []; // Lưu trữ danh sách tasks
 
   @override
   void initState() {
@@ -30,27 +32,37 @@ class _PersonalScreenState extends State<PersonalScreen> {
     String? uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
-    // Lấy dữ liệu từ SQLite
-    List<Task> allTasks = await database.getTasks();
+    allTasks = await database.getTasks(); // Lưu danh sách tasks vào state
     Map<DateTime, int> taskCountMap = await database.getCompletedTasksByDate();
 
     DateTime now = DateTime.now();
     DateTime today = DateTime(now.year, now.month, now.day);
-    DateTime firstDayOfMonth = DateTime(now.year, now.month, 1);
-    DateTime lastDayOfMonth = DateTime(now.year, now.month + 1, 0);
 
     int completed = 0;
     int pending = 0;
-    int completedTodayCount = taskCountMap[today] ?? 0;
+
+    // Lấy số lượng task hoàn thành hôm nay từ SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    int completedTodayCount = prefs.getInt('completed_today_count') ?? 0;
+
+    // Kiểm tra và reset nếu là ngày mới
+    final lastUpdatedDateString = prefs.getString('last_updated_date');
+    if (lastUpdatedDateString != null) {
+      final lastUpdatedDate = DateTime.parse(lastUpdatedDateString);
+      if (lastUpdatedDate.year != today.year ||
+          lastUpdatedDate.month != today.month ||
+          lastUpdatedDate.day != today.day) {
+        // Reset số lượng task hoàn thành hôm nay
+        await prefs.setInt('completed_today_count', 0);
+        completedTodayCount = 0;
+      }
+    }
+
+    // Lưu ngày hiện tại vào SharedPreferences
+    await prefs.setString('last_updated_date', today.toIso8601String());
 
     for (var task in allTasks) {
-      // Kiểm tra xem task có nằm trong tháng hiện tại và thuộc về user hiện tại hay không
-      if ((task.startDate.isBefore(lastDayOfMonth) ||
-              task.startDate.isAtSameMomentAs(lastDayOfMonth)) &&
-          (task.endDate.isAfter(firstDayOfMonth) ||
-              task.endDate.isAtSameMomentAs(firstDayOfMonth)) &&
-          task.userId == uid) {
-        // Lọc theo userId
+      if (task.userId == uid) {
         if (task.isCompleted) {
           completed++;
         } else {
@@ -63,7 +75,8 @@ class _PersonalScreenState extends State<PersonalScreen> {
       setState(() {
         completedTasks = completed;
         pendingTasks = pending;
-        completeToday = completedTodayCount;
+        completeToday =
+            completedTodayCount; // Sử dụng giá trị từ SharedPreferences
         completedTasksByDate = taskCountMap;
       });
     }
@@ -106,7 +119,23 @@ class _PersonalScreenState extends State<PersonalScreen> {
               ],
             ),
             const SizedBox(height: 10),
-            Expanded(child: _buildChart()), // Biểu đồ
+            Expanded(
+              child: FutureBuilder(
+                future:
+                    _buildChartData(), // Sử dụng FutureBuilder để xử lý bất đồng bộ
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  } else if (snapshot.hasError) {
+                    return Center(child: Text("Error: ${snapshot.error}"));
+                  } else {
+                    return _buildChart(
+                      snapshot.data as List<BarChartGroupData>,
+                    );
+                  }
+                },
+              ),
+            ), // Biểu đồ
           ],
         ),
       ),
@@ -150,7 +179,7 @@ class _PersonalScreenState extends State<PersonalScreen> {
     );
   }
 
-  Widget _buildChart() {
+  Future<List<BarChartGroupData>> _buildChartData() async {
     List<BarChartGroupData> barGroups = [];
     DateTime now = DateTime.now();
     DateTime firstDayOfMonth = DateTime(now.year, now.month, 1);
@@ -167,8 +196,27 @@ class _PersonalScreenState extends State<PersonalScreen> {
     }
 
     double maxY = 5; // Giá trị tối thiểu
+    final prefs = await SharedPreferences.getInstance();
+
     for (var day in selectedDays) {
-      int count = completedTasksByDate[day] ?? 0;
+      int count = 0;
+
+      // Đếm số lượng task hoàn thành trong ngày từ SharedPreferences
+      final keys = prefs.getKeys();
+      for (var key in keys) {
+        if (key.startsWith('completed_date_')) {
+          final dateString = prefs.getString(key);
+          if (dateString != null) {
+            final completedDate = DateTime.parse(dateString);
+            if (completedDate.year == day.year &&
+                completedDate.month == day.month &&
+                completedDate.day == day.day) {
+              count++;
+            }
+          }
+        }
+      }
+
       maxY = count > maxY ? count.toDouble() : maxY;
 
       barGroups.add(
@@ -186,6 +234,10 @@ class _PersonalScreenState extends State<PersonalScreen> {
       );
     }
 
+    return barGroups;
+  }
+
+  Widget _buildChart(List<BarChartGroupData> barGroups) {
     return Card(
       elevation: 4,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
@@ -194,7 +246,7 @@ class _PersonalScreenState extends State<PersonalScreen> {
         child: Column(
           children: [
             Text(
-              "Completed Tasks (${selectedDays.first.day}-${selectedDays.last.day})",
+              "Completed Tasks (${barGroups.first.x}-${barGroups.last.x})",
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
@@ -202,7 +254,7 @@ class _PersonalScreenState extends State<PersonalScreen> {
               child: BarChart(
                 BarChartData(
                   alignment: BarChartAlignment.spaceAround,
-                  maxY: maxY + 1, // Để có khoảng trống trên biểu đồ
+                  maxY: 10, // Giá trị tối đa của trục Y
                   barGroups: barGroups,
                   borderData: FlBorderData(show: false),
                   gridData: FlGridData(show: false),
@@ -217,14 +269,10 @@ class _PersonalScreenState extends State<PersonalScreen> {
                       sideTitles: SideTitles(
                         showTitles: true,
                         getTitlesWidget: (value, meta) {
-                          if (value.toInt() < selectedDays.length) {
-                            DateTime day = selectedDays[value.toInt()];
-                            return Text(
-                              "${day.day}",
-                              style: const TextStyle(fontSize: 12),
-                            );
-                          }
-                          return const Text("");
+                          return Text(
+                            "${value.toInt()}",
+                            style: const TextStyle(fontSize: 12),
+                          );
                         },
                       ),
                     ),

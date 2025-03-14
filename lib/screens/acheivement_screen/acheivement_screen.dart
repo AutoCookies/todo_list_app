@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../db/achievementDb.dart';
 import '../../Models/Acheivement.dart';
+
 class AchievementScreen extends StatefulWidget {
   const AchievementScreen({Key? key}) : super(key: key);
 
@@ -22,9 +23,7 @@ class _AchievementScreenState extends State<AchievementScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Achievements"),
-      ),
+      appBar: AppBar(title: const Text("Achievements")),
       body: FutureBuilder<List<Achievement>>(
         future: _futureAchievements,
         builder: (context, snapshot) {
@@ -37,18 +36,25 @@ class _AchievementScreenState extends State<AchievementScreen> {
           if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return const Center(child: Text("No achievements found."));
           }
+
           final achievements = snapshot.data!;
+
           return ListView.builder(
             itemCount: achievements.length,
             itemBuilder: (context, index) {
               Achievement achievement = achievements[index];
-              // Tính tỉ lệ tiến độ, đảm bảo không vượt quá 1.0
-              double progressPercent = achievement.goal > 0 
-                ? (achievement.progress / achievement.goal).clamp(0.0, 1.0) 
-                : 0.0;
+
+              // Kiểm tra xem achievement đã hoàn thành hay chưa
+              bool isCompleted = achievement.progress >= achievement.goal;
+
+              // Màu nền của Card
+              Color cardColor = isCompleted ? Colors.amber.shade700 : Colors.white;
+
               return Card(
                 margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                elevation: 3,
+                elevation: 5,
+                color: cardColor, // Đổi màu khi hoàn thành
+                shadowColor: isCompleted ? Colors.amber.shade300 : Colors.black54, // Hiệu ứng bóng
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -56,34 +62,62 @@ class _AchievementScreenState extends State<AchievementScreen> {
                     children: [
                       Row(
                         children: [
-                          // Sử dụng icon emoji_events làm biểu tượng thành tựu
-                          const Icon(Icons.emoji_events, size: 40, color: Colors.amber),
+                          Icon(
+                            Icons.emoji_events,
+                            size: 40,
+                            color: isCompleted ? Colors.yellowAccent.shade700 : Colors.amber,
+                          ),
                           const SizedBox(width: 16),
                           Expanded(
                             child: Text(
                               achievement.name,
-                              style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.bold,
+                                color: isCompleted ? Colors.white : Colors.black,
+                              ),
                             ),
                           ),
                         ],
                       ),
                       const SizedBox(height: 8),
-                      Text(achievement.description),
+                      Text(
+                        achievement.description,
+                        style: TextStyle(
+                          color: isCompleted ? Colors.white : Colors.black87,
+                        ),
+                      ),
                       const SizedBox(height: 16),
                       LinearProgressIndicator(
-                        value: progressPercent,
+                        value: (achievement.progress / achievement.goal).clamp(0.0, 1.0),
                         backgroundColor: Colors.grey[300],
-                        color: progressPercent >= 1.0 ? Colors.green : Colors.blue,
+                        color: isCompleted ? Colors.greenAccent : Colors.blue,
                       ),
                       const SizedBox(height: 8),
-                      Text("Progress: ${achievement.progress}/${achievement.goal}"),
-                      if (achievement.isCompleted)
-                        const Padding(
-                          padding: EdgeInsets.only(top: 8.0),
-                          child: Text("Completed!",
-                              style: TextStyle(
-                                  color: Colors.green,
-                                  fontWeight: FontWeight.bold)),
+                      Text(
+                        "Progress: ${achievement.progress}/${achievement.goal}",
+                        style: TextStyle(
+                          color: isCompleted ? Colors.white : Colors.black,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      if (isCompleted)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 8.0),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.check_circle, color: Colors.white, size: 24),
+                              const SizedBox(width: 8),
+                              Text(
+                                "Completed!",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                     ],
                   ),

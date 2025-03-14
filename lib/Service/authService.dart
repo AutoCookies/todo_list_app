@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import '../../db/achievementDb.dart';
 
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
@@ -7,7 +8,13 @@ class AuthService {
   // Đăng nhập với Email
   Future<UserCredential?> signInWithEmail(String email, String password) async {
     try {
-      return await _auth.signInWithEmailAndPassword(email: email, password: password);
+      UserCredential userCredential = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      await AchievementDb().initializeDefaultAchievements(); // Gọi sau khi đăng nhập thành công
+      return userCredential;
     } catch (e) {
       print("Error in signInWithEmail: $e");
       rethrow;
@@ -17,7 +24,13 @@ class AuthService {
   // Đăng ký với Email
   Future<UserCredential?> signUpWithEmail(String email, String password) async {
     try {
-      return await _auth.createUserWithEmailAndPassword(email: email, password: password);
+      UserCredential userCredential = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+
+      await AchievementDb().initializeDefaultAchievements(); // Gọi sau khi đăng ký thành công
+      return userCredential;
     } catch (e) {
       print("Error in signUpWithEmail: $e");
       rethrow;
@@ -36,7 +49,9 @@ class AuthService {
         idToken: googleAuth.idToken,
       );
 
-      return await _auth.signInWithCredential(credential);
+      UserCredential userCredential = await _auth.signInWithCredential(credential);
+      await AchievementDb().initializeDefaultAchievements(); // Gọi sau khi đăng nhập với Google thành công
+      return userCredential;
     } catch (e) {
       print("Error in signInWithGoogle: $e");
       rethrow;

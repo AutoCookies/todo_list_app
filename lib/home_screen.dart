@@ -94,7 +94,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       int diffDays = endDate.difference(today).inDays;
 
-      if (diffDays <= 3 && diffDays >= 0) {
+      if (diffDays <= 3 && diffDays >= 0 && result['isCompleted'] == 0) {
         taskListNearDeadLine.add(Task.fromMap(result));
       }
     }
