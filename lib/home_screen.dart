@@ -10,6 +10,7 @@ import 'screens/personal_screen/personal_screen.dart';
 import './Service/AudioService.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import './screens/acheivement_screen/acheivement_screen.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -251,6 +252,19 @@ class _HomeScreenState extends State<HomeScreen> {
                           : null,
                 ),
               ),
+            ),
+
+            ListTile(
+              leading: const Icon(Icons.emoji_events, size: 40, color: Colors.amber),
+              title: const Text("Achievements"),
+              subtitle: const Text("Your achievements description here! The hall for king of tasks"),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AchievementScreen()),
+                );
+              },
             ),
 
             // ⚙️ Settings

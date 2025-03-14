@@ -6,31 +6,51 @@ class AuthService {
 
   // Đăng nhập với Email
   Future<UserCredential?> signInWithEmail(String email, String password) async {
-    return await _auth.signInWithEmailAndPassword(email: email, password: password);
+    try {
+      return await _auth.signInWithEmailAndPassword(email: email, password: password);
+    } catch (e) {
+      print("Error in signInWithEmail: $e");
+      rethrow;
+    }
   }
 
   // Đăng ký với Email
   Future<UserCredential?> signUpWithEmail(String email, String password) async {
-    return await _auth.createUserWithEmailAndPassword(email: email, password: password);
+    try {
+      return await _auth.createUserWithEmailAndPassword(email: email, password: password);
+    } catch (e) {
+      print("Error in signUpWithEmail: $e");
+      rethrow;
+    }
   }
 
   // Đăng nhập với Google
   Future<UserCredential?> signInWithGoogle() async {
-    final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-    if (googleUser == null) return null;
+    try {
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+      if (googleUser == null) return null;
 
-    final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
-    final credential = GoogleAuthProvider.credential(
-      accessToken: googleAuth.accessToken,
-      idToken: googleAuth.idToken,
-    );
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
 
-    return await _auth.signInWithCredential(credential);
+      return await _auth.signInWithCredential(credential);
+    } catch (e) {
+      print("Error in signInWithGoogle: $e");
+      rethrow;
+    }
   }
 
   // Đăng xuất
   Future<void> signOut() async {
-    await _auth.signOut();
-    await GoogleSignIn().signOut();
+    try {
+      await _auth.signOut();
+      await GoogleSignIn().signOut();
+    } catch (e) {
+      print("Error in signOut: $e");
+      rethrow;
+    }
   }
 }
