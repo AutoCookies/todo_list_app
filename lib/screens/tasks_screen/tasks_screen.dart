@@ -3,6 +3,7 @@ import '../../Models/Task.dart';
 import '../add_tasks_screen/add_tasks_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import '../../utils/acheivements_utils.dart';
 
 class TasksScreen extends StatefulWidget {
   final List<Task> tasks;
@@ -171,34 +172,47 @@ class _TasksScreenState extends State<TasksScreen> {
                   },
                 ),
                 Checkbox(
-  value: task.isCompleted,
-  onChanged: (value) async {
-    bool newValue = value ?? false;
-    widget.onTaskUpdated(task.copyWith(isCompleted: newValue));
+                  value: task.isCompleted,
+                  onChanged: (value) async {
+                    bool newValue = value ?? false;
+                    widget.onTaskUpdated(task.copyWith(isCompleted: newValue));
 
-    final prefs = await SharedPreferences.getInstance();
-    final userId = FirebaseAuth.instance.currentUser?.uid;
-    if (userId == null) return;
+                    final prefs = await SharedPreferences.getInstance();
+                    final userId = FirebaseAuth.instance.currentUser?.uid;
+                    if (userId == null) return;
 
-    if (newValue) {
-      // Lưu ngày hoàn thành vào SharedPreferences với User ID
-      await prefs.setString('completed_date_${userId}_${task.id}', DateTime.now().toIso8601String());
+                    if (newValue) {
+                      // Lưu ngày hoàn thành vào SharedPreferences với User ID
+                      await prefs.setString(
+                        'completed_date_${userId}_${task.id}',
+                        DateTime.now().toIso8601String(),
+                      );
 
-      // Tăng số lượng task hoàn thành hôm nay
-      int completedToday = prefs.getInt('completed_today_count_$userId') ?? 0;
-      await prefs.setInt('completed_today_count_$userId', completedToday + 1);
-    } else {
-      // Xóa ngày hoàn thành khỏi SharedPreferences nếu task được bỏ chọn
-      await prefs.remove('completed_date_${userId}_${task.id}');
+                      // Tăng số lượng task hoàn thành hôm nay
+                      int completedToday =
+                          prefs.getInt('completed_today_count_$userId') ?? 0;
+                      await prefs.setInt(
+                        'completed_today_count_$userId',
+                        completedToday + 1,
+                      );
 
-      // Giảm số lượng task hoàn thành hôm nay
-      int completedToday = prefs.getInt('completed_today_count_$userId') ?? 0;
-      if (completedToday > 0) {
-        await prefs.setInt('completed_today_count_$userId', completedToday - 1);
-      }
-    }
-  },
-),
+                      await AchievementUtils().updateAchievementsAfterAction("task_completed");
+                    } else {
+                      // Xóa ngày hoàn thành khỏi SharedPreferences nếu task được bỏ chọn
+                      await prefs.remove('completed_date_${userId}_${task.id}');
+
+                      // Giảm số lượng task hoàn thành hôm nay
+                      int completedToday =
+                          prefs.getInt('completed_today_count_$userId') ?? 0;
+                      if (completedToday > 0) {
+                        await prefs.setInt(
+                          'completed_today_count_$userId',
+                          completedToday - 1,
+                        );
+                      }
+                    }
+                  },
+                ),
                 IconButton(
                   icon: const Icon(Icons.delete),
                   onPressed: () {
