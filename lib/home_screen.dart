@@ -25,11 +25,14 @@ class _HomeScreenState extends State<HomeScreen> {
   List<Task> tasks = [];
   File? _profileImage; // Biến lưu ảnh đại diện của người dùng
   int _currentIndex = 0;
+  String _userName = "User";
+  final TextEditingController _nameController = TextEditingController();
 
   @override
   void initState() {
     super.initState();
     _loadTasks();
+    _loadUserName();
 
     // Trì hoãn việc gọi checkDeadlineTask để đảm bảo context hợp lệ
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -38,6 +41,48 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
     _loadImageOnStartup();
+  }
+
+  void _loadUserName() {
+    final displayName = FirebaseAuth.instance.currentUser?.displayName;
+    if (displayName != null && displayName.isNotEmpty) {
+      setState(() {
+        _userName = displayName;
+      });
+    }
+  }
+
+  Future<void> _showEditNameDialog() async {
+    _nameController.text = _userName; // Đặt giá trị hiện tại vào TextField
+    return showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text("Edit Name"),
+          content: TextField(
+            controller: _nameController,
+            decoration: const InputDecoration(hintText: "Enter your name"),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context); // Đóng hộp thoại
+              },
+              child: const Text("Cancel"),
+            ),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _userName = _nameController.text; // Cập nhật tên mới
+                });
+                Navigator.pop(context); // Đóng hộp thoại
+              },
+              child: const Text("Save"),
+            ),
+          ],
+        );
+      },
+    );
   }
 
   Future<void> _logout(BuildContext context) async {
@@ -94,7 +139,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
       int diffDays = endDate.difference(today).inDays;
 
-      if (diffDays <= 3 && diffDays >= 0 && result['isCompleted'] == 0) {
+      if (diffDays <= 3 && diffDays >= 0 && result['isCompleted'] == 0 && result['userId'] == FirebaseAuth.instance.currentUser?.uid) {
         taskListNearDeadLine.add(Task.fromMap(result));
       }
     }
@@ -228,11 +273,21 @@ class _HomeScreenState extends State<HomeScreen> {
             // 🖼️ Drawer Header với ảnh user
             UserAccountsDrawerHeader(
               decoration: const BoxDecoration(color: Colors.blueAccent),
-              accountName: const Text(
-                "Cookiescooker",
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+              accountName: GestureDetector(
+                onTap: _showEditNameDialog, // Cho phép người dùng sửa tên
+                child: Text(
+                  _userName, // Hiển thị tên người dùng
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
-              accountEmail: const Text("cookiescooker@example.com"),
+              accountEmail: Text(
+                FirebaseAuth.instance.currentUser?.email ??
+                    "No email", // Hiển thị email của người dùng
+                style: const TextStyle(fontSize: 16),
+              ),
               currentAccountPicture: GestureDetector(
                 onTap: _pickImage, // Nhấn để chọn ảnh mới
                 child: CircleAvatar(
@@ -255,14 +310,22 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
 
             ListTile(
-              leading: const Icon(Icons.emoji_events, size: 40, color: Colors.amber),
+              leading: const Icon(
+                Icons.emoji_events,
+                size: 40,
+                color: Colors.amber,
+              ),
               title: const Text("Achievements"),
-              subtitle: const Text("Your achievements description here! The hall for king of tasks"),
+              subtitle: const Text(
+                "Your achievements description here! The hall for king of tasks",
+              ),
               onTap: () {
                 Navigator.pop(context);
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (context) => const AchievementScreen()),
+                  MaterialPageRoute(
+                    builder: (context) => const AchievementScreen(),
+                  ),
                 );
               },
             ),

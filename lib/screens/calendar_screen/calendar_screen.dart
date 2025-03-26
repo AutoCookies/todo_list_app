@@ -75,7 +75,7 @@ class _CalendarScreenState extends State<CalendarScreen> {
                     [])
                 .where(
                   (task) => !task.isCompleted,
-                ) // 🔥 Chỉ lấy task chưa hoàn thành
+                ) 
                 .toList()
             : [];
 

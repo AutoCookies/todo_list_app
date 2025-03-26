@@ -29,8 +29,8 @@ class _PersonalScreenState extends State<PersonalScreen> {
   }
 
   Future<void> _loadTaskStats() async {
-    String? uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) return;
 
     allTasks = await database.getTasks(); // Lưu danh sách tasks vào state
     Map<DateTime, int> taskCountMap = await database.getCompletedTasksByDate();
@@ -43,26 +43,27 @@ class _PersonalScreenState extends State<PersonalScreen> {
 
     // Lấy số lượng task hoàn thành hôm nay từ SharedPreferences
     final prefs = await SharedPreferences.getInstance();
-    int completedTodayCount = prefs.getInt('completed_today_count') ?? 0;
+    int completedTodayCount =
+        prefs.getInt('completed_today_count_$userId') ?? 0;
 
     // Kiểm tra và reset nếu là ngày mới
-    final lastUpdatedDateString = prefs.getString('last_updated_date');
+    final lastUpdatedDateString = prefs.getString('last_updated_date_$userId');
     if (lastUpdatedDateString != null) {
       final lastUpdatedDate = DateTime.parse(lastUpdatedDateString);
       if (lastUpdatedDate.year != today.year ||
           lastUpdatedDate.month != today.month ||
           lastUpdatedDate.day != today.day) {
         // Reset số lượng task hoàn thành hôm nay
-        await prefs.setInt('completed_today_count', 0);
+        await prefs.setInt('completed_today_count_$userId', 0);
         completedTodayCount = 0;
       }
     }
 
     // Lưu ngày hiện tại vào SharedPreferences
-    await prefs.setString('last_updated_date', today.toIso8601String());
+    await prefs.setString('last_updated_date_$userId', today.toIso8601String());
 
     for (var task in allTasks) {
-      if (task.userId == uid) {
+      if (task.userId == userId) {
         if (task.isCompleted) {
           completed++;
         } else {
@@ -197,6 +198,8 @@ class _PersonalScreenState extends State<PersonalScreen> {
 
     double maxY = 5; // Giá trị tối thiểu
     final prefs = await SharedPreferences.getInstance();
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) return barGroups;
 
     for (var day in selectedDays) {
       int count = 0;
@@ -204,7 +207,7 @@ class _PersonalScreenState extends State<PersonalScreen> {
       // Đếm số lượng task hoàn thành trong ngày từ SharedPreferences
       final keys = prefs.getKeys();
       for (var key in keys) {
-        if (key.startsWith('completed_date_')) {
+        if (key.startsWith('completed_date_${userId}_')) {
           final dateString = prefs.getString(key);
           if (dateString != null) {
             final completedDate = DateTime.parse(dateString);
@@ -240,13 +243,15 @@ class _PersonalScreenState extends State<PersonalScreen> {
   Widget _buildChart(List<BarChartGroupData> barGroups) {
     return Card(
       elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           children: [
             Text(
-              "Completed Tasks (${barGroups.first.x}-${barGroups.last.x})",
+              barGroups.isNotEmpty
+                  ? "Completed Tasks (${barGroups.first.x}-${barGroups.last.x})"
+                  : "No Completed Tasks",
               style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 10),
@@ -254,7 +259,7 @@ class _PersonalScreenState extends State<PersonalScreen> {
               child: BarChart(
                 BarChartData(
                   alignment: BarChartAlignment.spaceAround,
-                  maxY: 10, // Giá trị tối đa của trục Y
+                  maxY: 20, // Giá trị tối đa của trục Y
                   barGroups: barGroups,
                   borderData: FlBorderData(show: false),
                   gridData: FlGridData(show: false),
