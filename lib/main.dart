@@ -4,10 +4,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import './Listeners/auth_listener.dart';
 import '../firebase_options.dart';
 import './loading_screen.dart';
-import 'dart:async'; // Thêm thư viện này để dùng Future.delayed()
+import 'dart:async';
+// import './Service/background_service.dart';
+// import './Service//notification_service.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // await NotificationService.init();
+  // await registerBackgroundTask();
   runApp(MyApp());
 }
 

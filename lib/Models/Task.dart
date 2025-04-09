@@ -9,6 +9,7 @@ class Task {
   bool isCompleted;
   bool isFavorite;
   final String type;
+  
 
   Task({
     String? id, // Cho phép null, tự tạo nếu không có

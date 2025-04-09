@@ -11,6 +11,10 @@ import './Service/AudioService.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import './screens/acheivement_screen/acheivement_screen.dart';
+import '../Models/Experience.dart';
+import '../db/experienceDb.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
@@ -27,12 +31,24 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
   String _userName = "User";
   final TextEditingController _nameController = TextEditingController();
+  StreamSubscription<DocumentSnapshot>? _experienceSubscription;
+  int currentXP = 0; // Kinh nghiệm hiện tại
+  int xpRequired = 100; // Kinh nghiệm yêu cầu để lên cấp
+  Experience? experience;
+
+  @override
+  void dispose() {
+    _experienceSubscription?.cancel();
+    super.dispose();
+  }
 
   @override
   void initState() {
     super.initState();
     _loadTasks();
     _loadUserName();
+    _loadUserExperience();
+    _setupExperienceListener();
 
     // Trì hoãn việc gọi checkDeadlineTask để đảm bảo context hợp lệ
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -41,6 +57,42 @@ class _HomeScreenState extends State<HomeScreen> {
       }
     });
     _loadImageOnStartup();
+  }
+
+  Future<void> _loadUserExperience() async {
+    final exp = await ExperienceDatabaseService()
+        .getExperienceByUserIdFromFirebase(
+          FirebaseAuth.instance.currentUser?.uid ?? "",
+        );
+
+    if (exp != null) {
+      setState(() {
+        experience = exp;
+        currentXP = exp.xpCurrent;
+        xpRequired = exp.xpRequired;
+      });
+    }
+  }
+
+  void _setupExperienceListener() {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) return;
+
+    _experienceSubscription = FirebaseFirestore.instance
+        .collection('users')
+        .doc(userId)
+        .collection('experience')
+        .doc(userId)
+        .snapshots()
+        .listen((snapshot) {
+          if (snapshot.exists && mounted) {
+            setState(() {
+              experience = Experience.fromMap(snapshot.data()!);
+              currentXP = experience!.xpCurrent;
+              xpRequired = experience!.xpRequired;
+            });
+          }
+        });
   }
 
   void _loadUserName() {
@@ -139,7 +191,10 @@ class _HomeScreenState extends State<HomeScreen> {
 
       int diffDays = endDate.difference(today).inDays;
 
-      if (diffDays <= 3 && diffDays >= 0 && result['isCompleted'] == 0 && result['userId'] == FirebaseAuth.instance.currentUser?.uid) {
+      if (diffDays <= 3 &&
+          diffDays >= 0 &&
+          result['isCompleted'] == 0 &&
+          result['userId'] == FirebaseAuth.instance.currentUser?.uid) {
         taskListNearDeadLine.add(Task.fromMap(result));
       }
     }
@@ -309,6 +364,81 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
 
+            // 💪 Thanh kinh nghiệm + Level
+            Padding(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 16.0,
+                vertical: 8.0,
+              ),
+              child: Card(
+                elevation: 3,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(12.0),
+                  child: Column(
+                    children: [
+                      // Hiển thị Level
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Level ${experience?.level ?? 1}", // Sử dụng level từ experience
+                            style: TextStyle(
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.blue[800],
+                            ),
+                          ),
+                          Icon(Icons.star, color: Colors.amber),
+                        ],
+                      ),
+                      SizedBox(height: 8),
+                      // Thanh tiến trình XP
+                      Stack(
+                        children: [
+                          LinearProgressIndicator(
+                            value:
+                                (experience?.xpCurrent ?? 0) /
+                                (experience?.xpRequired ?? 100),
+                            minHeight: 20,
+                            backgroundColor: Colors.grey[200],
+                            color: Colors.lightBlueAccent,
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          Positioned.fill(
+                            child: Center(
+                              child: Text(
+                                "${experience?.xpCurrent ?? 0}/${experience?.xpRequired ?? 100} XP",
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                  shadows: [
+                                    Shadow(
+                                      blurRadius: 2,
+                                      color: Colors.black,
+                                      offset: Offset(1, 1),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      SizedBox(height: 4),
+                      Text(
+                        "Next level in ${(experience?.xpRequired ?? 100) - (experience?.xpCurrent ?? 0)} XP",
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+
+            // Các mục khác trong Drawer
             ListTile(
               leading: const Icon(
                 Icons.emoji_events,
@@ -347,6 +477,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
             const Divider(),
 
+            // Các mục liên quan đến task
             ListTile(
               leading: const Icon(Icons.fireplace, color: Colors.red),
               title: Text(
@@ -381,10 +512,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
 
             ListTile(
-              leading: const Icon(
-                Icons.work,
-                color: Colors.grey,
-              ), // Icon công việc bình thường
+              leading: const Icon(Icons.work, color: Colors.grey),
               title: Text(
                 "Normal Tasks: ${tasks.where((task) => task.type == 'General' && task.isCompleted == false).length}",
                 style: const TextStyle(
@@ -406,6 +534,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
+
       body: Stack(
         children: [
           // Gradient Background

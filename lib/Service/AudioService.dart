@@ -18,7 +18,7 @@ class AudioService {
   static Future<bool> getIsNotficationEnabled() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.getBool('isNotificationEnabled') ?? false;
-    print('Got isNotificationEnabled: ${prefs.getBool('isNotificationEnabled')}');
+    // print('Got isNotificationEnabled: ${prefs.getBool('isNotificationEnabled')}');
   }
 
   // Phát âm thanh thông báo
