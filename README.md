@@ -58,14 +58,6 @@ A powerful and intuitive **Task Management App** with a unique **3D task viewer*
 
 ---
 
-## 🛠️ Technologies Used
-
-- **Flutter** for cross-platform UI
-- **Three.js** or **Unity3D** for 3D Task Viewer *(optional depending on stack)*
-- **Firebase / SQLite** for authentication and data storage
-- **Chart.js / D3.js** for real-time data visualization
----
-
 ### Sound Announcement
 - You can turn on or turn It off.
 - Change the volume of the announce.
