@@ -17,7 +17,7 @@ A powerful and intuitive **Task Management App** with a unique **3D task viewer*
 
 ### 🔐 Authentication
 - **Sign Up** with email and password
-- **Secure Sign In** with Firebase Authentication (or your own backend)
+- **Secure Sign In** with Firebase Authentication
 - Persistent login session
 - Support for password reset and email verification *(optional)*
 
